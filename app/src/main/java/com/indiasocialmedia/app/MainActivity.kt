@@ -1,7 +1,7 @@
 package com.indiasocialmedia.app
 
-import android.os.Bundle
 import androidx.activity.ComponentActivity
+import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -15,14 +15,18 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.ListenerRegistration
 
 private val Brand = Color(0xFFCE315B)
 private val StoryNames = listOf("Your story", "Aarav", "Priya", "Rahul", "Neha", "Kabir")
-private data class Post(val user: String, val place: String, val caption: String, val color: Color)
-private val Posts = listOf(
+private data class Post(val user: String, val place: String, val caption: String, val color: Color, val imageUrl: String? = null)
+private val DemoPosts = listOf(
     Post("india.creator", "Jaipur, Rajasthan", "Beautiful India 🇮🇳 #IndiaSocial", Color(0xFFE7B67A)),
     Post("travel_diary", "Himalayas", "Find your own way. ✨", Color(0xFF87B7C9)),
     Post("daily_moments", "Jaisalmer", "Golden evenings in Rajasthan.", Color(0xFFD49B65))
@@ -39,6 +43,27 @@ class MainActivity : ComponentActivity() {
 fun IndiaSocialApp() {
     var page by remember { mutableIntStateOf(0) }
     var likedPosts by remember { mutableStateOf(setOf<Int>()) }
+    var posts by remember { mutableStateOf(DemoPosts) }
+
+    DisposableEffect(Unit) {
+        val registration: ListenerRegistration = FirebaseFirestore.getInstance().collection("posts")
+            .addSnapshotListener { snapshot, error ->
+                if (error == null && snapshot != null) {
+                    val loaded = snapshot.documents.map { doc ->
+                        Post(
+                            user = doc.getString("username") ?: "user",
+                            place = doc.getString("place") ?: "India",
+                            caption = doc.getString("caption") ?: "",
+                            color = Color(0xFFE7B67A),
+                            imageUrl = doc.getString("imageUrl")
+                        )
+                    }
+                    posts = if (loaded.isNotEmpty()) loaded else DemoPosts
+                }
+            }
+        onDispose { registration.remove() }
+    }
+
     MaterialTheme(colorScheme = lightColorScheme(primary = Brand)) {
         Scaffold(
             topBar = {
@@ -70,12 +95,12 @@ fun IndiaSocialApp() {
             }
         ) { padding ->
             when (page) {
-                0 -> HomeFeed(Modifier.padding(padding), likedPosts) { id ->
+                0 -> HomeFeed(Modifier.padding(padding), posts, likedPosts) { id ->
                     likedPosts = if (id in likedPosts) likedPosts - id else likedPosts + id
                 }
                 1 -> SimplePage("Search & Explore", "Find people, hashtags and posts")
                 2 -> SimplePage("Reels", "Short videos will appear here")
-                3 -> SimplePage("Create post", "Photo and video upload will be connected next")
+                3 -> Box(Modifier.padding(padding)) { CreatePostScreen { page = 0 } }
                 else -> SimplePage("Your Profile", "@your_username\nPosts • Followers • Following")
             }
         }
@@ -83,7 +108,7 @@ fun IndiaSocialApp() {
 }
 
 @Composable
-private fun HomeFeed(modifier: Modifier, liked: Set<Int>, onLike: (Int) -> Unit) {
+private fun HomeFeed(modifier: Modifier, posts: List<Post>, liked: Set<Int>, onLike: (Int) -> Unit) {
     LazyColumn(modifier.fillMaxSize()) {
         item {
             Row(Modifier.fillMaxWidth().padding(vertical = 12.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
@@ -101,8 +126,8 @@ private fun HomeFeed(modifier: Modifier, liked: Set<Int>, onLike: (Int) -> Unit)
                 }
             }
         }
-        items(Posts) { post ->
-            val index = Posts.indexOf(post)
+        items(posts) { post ->
+            val index = posts.indexOf(post)
             Column(Modifier.fillMaxWidth()) {
                 Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                     Box(Modifier.size(36.dp).background(Brand, CircleShape), contentAlignment = Alignment.Center) {
@@ -114,8 +139,17 @@ private fun HomeFeed(modifier: Modifier, liked: Set<Int>, onLike: (Int) -> Unit)
                     }
                     Icon(Icons.Default.MoreVert, "More")
                 }
-                Box(Modifier.fillMaxWidth().height(280.dp).background(post.color), contentAlignment = Alignment.Center) {
-                    Text("India 🇮🇳", fontSize = 36.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                if (post.imageUrl != null) {
+                    AsyncImage(
+                        model = post.imageUrl,
+                        contentDescription = "Post image",
+                        modifier = Modifier.fillMaxWidth().height(280.dp),
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
+                    Box(Modifier.fillMaxWidth().height(280.dp).background(post.color), contentAlignment = Alignment.Center) {
+                        Text("India 🇮🇳", fontSize = 36.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                    }
                 }
                 Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                     IconButton(onClick = { onLike(index) }) {
