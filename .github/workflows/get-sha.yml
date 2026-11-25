@@ -23,3 +23,6 @@ jobs:
           gradle-version: "8.9"
       - name: Generate signing report
         run: gradle :app:signingReport
+      - name: Print SHA-1
+        run: |
+          gradle :app:signingReport
