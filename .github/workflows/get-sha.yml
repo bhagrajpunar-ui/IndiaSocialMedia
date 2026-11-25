@@ -27,10 +27,10 @@ jobs:
 
       - name: Create Android debug keystore
         run: |
-          mkdir -p "$HOME/.android"
+          mkdir -p "$HOME/.config/.android"
           keytool -genkeypair \
             -v \
-            -keystore "$HOME/.android/debug.keystore" \
+            -keystore "$HOME/.config/.android/debug.keystore" \
             -storepass android \
             -keypass android \
             -alias AndroidDebugKey \
@@ -42,10 +42,9 @@ jobs:
       - name: Print SHA-1
         run: |
           keytool -list -v \
-            -keystore "$HOME/.android/debug.keystore" \
+            -keystore "$HOME/.config/.android/debug.keystore" \
             -storepass android \
             -alias AndroidDebugKey
 
       - name: Generate signing report
         run: gradle :app:signingReport
-        
