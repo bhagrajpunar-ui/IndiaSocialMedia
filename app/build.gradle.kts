@@ -25,6 +25,18 @@ android {
     }
     buildFeatures { compose = true }
 }
+
+// Enforce matching Java/Kotlin bytecode targets on every compile task.
+tasks.withType<org.gradle.api.tasks.compile.JavaCompile>().configureEach {
+    sourceCompatibility = "17"
+    targetCompatibility = "17"
+}
+tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
+    kotlinOptions {
+        jvmTarget = "17"
+    }
+}
+
 dependencies {
     implementation(platform("androidx.compose:compose-bom:2024.12.01"))
     implementation("androidx.activity:activity-compose:1.10.0")
