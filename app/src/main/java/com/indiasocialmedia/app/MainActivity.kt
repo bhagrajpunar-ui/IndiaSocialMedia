@@ -31,7 +31,7 @@ private val Posts = listOf(
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContent { IndiaSocialApp() }
+        setContent { FirebaseGate() }
     }
 }
 
