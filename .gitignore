@@ -1,0 +1,10 @@
+# Firebase app config is downloaded from Firebase Console
+app/google-services.json
+
+# Android / Gradle
+.gradle/
+**/build/
+local.properties
+.idea/
+*.iml
+.DS_Store
