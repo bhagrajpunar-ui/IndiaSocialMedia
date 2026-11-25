@@ -7,6 +7,7 @@ Instagram-inspired Android social networking app starter built with Kotlin and J
 - Bottom navigation: Home, Search, Reels, Create and Profile
 - Demo like interaction
 - Firebase SDK dependencies for Authentication, Firestore, Storage and FCM
+- Firebase setup gate and email/password login/register UI
 - `AuthRepository`: email/password registration and sign-in, profile document creation
 - `PostRepository`: publish a post document and listen to the newest feed
 - `MediaUploadRepository`: upload selected image/video Uri to Firebase Storage
