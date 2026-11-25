@@ -14,6 +14,7 @@ import androidx.compose.ui.unit.dp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.storage.FirebaseStorage
+import com.google.firebase.storage.StorageException
 import java.util.UUID
 
 @Composable
@@ -25,6 +26,7 @@ fun CreatePostScreen(onPostCreated: () -> Unit) {
 
     val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         selectedImage = uri
+        message = ""
     }
 
     Column(
@@ -53,31 +55,64 @@ fun CreatePostScreen(onPostCreated: () -> Unit) {
                 val user = FirebaseAuth.getInstance().currentUser
                 if (uri == null) { message = "पहले Gallery से फोटो चुनें।"; return@Button }
                 if (user == null) { message = "कृपया पहले Login करें।"; return@Button }
+
                 busy = true
                 message = "Photo uploading..."
                 val postId = UUID.randomUUID().toString()
-                val imageRef = FirebaseStorage.getInstance().reference.child("posts/${user.uid}/$postId.jpg")
-                imageRef.putFile(uri).continueWithTask { task ->
-                    if (!task.isSuccessful) throw task.exception ?: Exception("Upload failed")
-                    imageRef.downloadUrl
-                }.addOnSuccessListener { downloadUri ->
-                    val username = user.displayName?.takeIf { it.isNotBlank() } ?: user.email?.substringBefore("@") ?: "user"
-                    val post = hashMapOf(
-                        "postId" to postId, "userId" to user.uid, "username" to username,
-                        "caption" to caption.trim(), "imageUrl" to downloadUri.toString(),
-                        "createdAt" to com.google.firebase.firestore.FieldValue.serverTimestamp()
-                    )
-                    FirebaseFirestore.getInstance().collection("posts").document(postId).set(post)
-                        .addOnSuccessListener { busy = false; message = "Post published!"; onPostCreated() }
-                        .addOnFailureListener { error -> busy = false; message = error.localizedMessage ?: "Post save failed" }
-                }.addOnFailureListener { error ->
-                    busy = false; message = error.localizedMessage ?: "Photo upload failed"
-                }
+                val storage = FirebaseStorage.getInstance()
+                val imageRef = storage.reference.child("posts/${user.uid}/$postId.jpg")
+
+                imageRef.putFile(uri)
+                    .addOnSuccessListener {
+                        // Resolve the URL only after Firebase confirms the upload is complete.
+                        imageRef.downloadUrl
+                            .addOnSuccessListener { downloadUri ->
+                                val username = user.displayName?.takeIf { it.isNotBlank() }
+                                    ?: user.email?.substringBefore("@") ?: "user"
+                                val post = hashMapOf(
+                                    "postId" to postId,
+                                    "userId" to user.uid,
+                                    "username" to username,
+                                    "caption" to caption.trim(),
+                                    "imageUrl" to downloadUri.toString(),
+                                    "createdAt" to com.google.firebase.firestore.FieldValue.serverTimestamp()
+                                )
+                                FirebaseFirestore.getInstance().collection("posts").document(postId).set(post)
+                                    .addOnSuccessListener {
+                                        busy = false
+                                        message = "Post published!"
+                                        onPostCreated()
+                                    }
+                                    .addOnFailureListener { error ->
+                                        busy = false
+                                        message = "Firestore save failed: ${error.localizedMessage ?: "Unknown error"}"
+                                    }
+                            }
+                            .addOnFailureListener { error ->
+                                busy = false
+                                val storageError = error as? StorageException
+                                val code = storageError?.errorCode?.toString() ?: "unknown"
+                                message = if (storageError?.errorCode == StorageException.ERROR_OBJECT_NOT_FOUND) {
+                                    "Uploaded photo URL नहीं मिली (object not found)। Firebase Console → Storage में bucket और posts/${user.uid}/$postId.jpg path जाँचें। Bucket: ${imageRef.bucket}"
+                                } else {
+                                    "Download URL error ($code): ${error.localizedMessage ?: "Unknown error"}"
+                                }
+                            }
+                    }
+                    .addOnFailureListener { error ->
+                        busy = false
+                        val storageError = error as? StorageException
+                        val code = storageError?.errorCode?.toString() ?: "unknown"
+                        message = "Photo upload error ($code): ${error.localizedMessage ?: "Unknown error"}. Bucket: ${imageRef.bucket}; path: ${imageRef.path}"
+                    }
             },
             modifier = Modifier.fillMaxWidth()
         ) {
             if (busy) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp) else Text("Publish post")
         }
-        if (message.isNotBlank()) { Spacer(Modifier.height(12.dp)); Text(message) }
+        if (message.isNotBlank()) {
+            Spacer(Modifier.height(12.dp))
+            Text(message, color = if (message == "Post published!") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error)
+        }
     }
 }
