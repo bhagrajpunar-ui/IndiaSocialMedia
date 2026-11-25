@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "873216910583",
+    "project_id": "indiasocialmedia-820b3",
+    "storage_bucket": "indiasocialmedia-820b3.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:873216910583:android:d0c23152af031a86addff2",
+        "android_client_info": {
+          "package_name": "com.indiasocialmedia.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAS0paPlrIdsY2RzmjEj8WlfWUlJIsuH8w"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
